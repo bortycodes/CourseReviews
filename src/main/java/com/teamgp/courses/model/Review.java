@@ -4,6 +4,15 @@ import java.util.Objects;
 
 public class Review {
   private int id;
+
+  public int getCourseId() {
+    return courseId;
+  }
+
+  public void setCourseId(int courseId) {
+    this.courseId = courseId;
+  }
+
   private int courseId;
   private int rating;
   private String comment;
@@ -22,13 +31,7 @@ public class Review {
     this.id = id;
   }
 
-  public int getCourseId() {
-    return courseId;
-  }
 
-  public void setCourseId(int courseId) {
-    this.courseId = courseId;
-  }
 
   public int getRating() {
     return rating;
