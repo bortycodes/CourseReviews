@@ -5,7 +5,9 @@ import static org.junit.Assert.*;
 import com.google.gson.Gson;
 
 import com.teamgp.courses.dao.Sql2oCourseDao;
+import com.teamgp.courses.dao.Sql2oReviewDao;
 import com.teamgp.courses.model.Course;
+import com.teamgp.courses.model.Review;
 import com.teamgp.testing.ApiClient;
 import com.teamgp.testing.ApiResponse;
 import org.junit.After;
@@ -28,6 +30,7 @@ public class ApiTest {
   private ApiClient client;
   private Gson gson;
   private Sql2oCourseDao courseDao;
+  private Sql2oReviewDao reviewDao;
 
   @BeforeClass
   public static void startServer(){
@@ -44,6 +47,7 @@ public class ApiTest {
   public void setUp() throws Exception {
     Sql2o sql2o = new Sql2o(TEST_DATASOURCE + ";INIT=RUNSCRIPT from 'classpath:db/init.sql'", "", "");
     courseDao = new Sql2oCourseDao(sql2o);
+    reviewDao = new Sql2oReviewDao(sql2o);
     conn = sql2o.open();
     client = new ApiClient("http://localhost:" + PORT);
     gson = new Gson();
@@ -81,6 +85,47 @@ public class ApiTest {
   public void missingCoursesReturnNotFoundStatus() throws Exception {
     ApiResponse res = client.request("GET", "/courses/999");
     assertEquals(404, res.getStatus());
+  }
+
+  @Test
+  public void addingReviewGivesCreatedStatus() throws Exception{
+    Course course = newTestCourse();
+    courseDao.add(course);
+
+    Map<String, Object> values = new HashMap<>();
+    values.put("rating", 5);
+    values.put("comment", "test comment");
+
+    ApiResponse res = client.request("POST", String.format("/courses/%d/reviews", course.getId())
+                                      ,gson.toJson(values));
+    assertEquals(201,res.getStatus());
+  }
+
+  @Test
+  public void addingReviewToUnknownCourseThrowsError() throws Exception {
+    Map<String, Object> values = new HashMap<>();
+    values.put("rating", 5);
+    values.put("comment", "test comment");
+
+    ApiResponse res = client.request("POST", "/courses/1/reviews", gson.toJson(values));
+
+    assertEquals(500,res.getStatus());
+  }
+
+  @Test
+  public void multipleReviewsReturnedForCourse() throws Exception {
+    Course course = newTestCourse();
+    courseDao.add(course);
+
+    reviewDao.add(new Review(course.getId(),5, "comment for review 1"));
+    reviewDao.add(new Review(course.getId(),3, "comment for review 2"));
+    reviewDao.add(new Review(course.getId(),2, "comment for review 3"));
+
+    ApiResponse res = client.request("GET", String.format("/courses/%d/reviews", course.getId()));
+
+    Review[] reviews = gson.fromJson(res.getBody(), Review[].class);
+
+    assertEquals(3, reviews.length);
   }
 
   private Course newTestCourse() {
